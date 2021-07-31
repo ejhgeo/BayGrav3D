@@ -1,0 +1,155 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1. Gravitational Anomaly over a 3D Prism &#8212; BayGrav3D 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="2. Linear Least Squares Inversion" href="lls_inversion.html" />
+    <link rel="prev" title="Theoretical Background" href="theory.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="gravitational-anomaly-over-a-3d-prism">
+<h1><span class="section-number">1. </span>Gravitational Anomaly over a 3D Prism<a class="headerlink" href="#gravitational-anomaly-over-a-3d-prism" title="Permalink to this headline">¶</a></h1>
+<p>The gravitational anomaly of a rectangular prism is given as in Turcotte and Schubert (2014) as:</p>
+<div class="math notranslate nohighlight">
+\[\Delta g = \Gamma \Delta \rho \sum_{i=1}^{2} \sum_{j=1}^{2} \sum_{k=1}^{2} \mu_{ijk}[\Delta z_k arctan(\frac{\Delta x_i \Delta y_i}{\Delta z_k R_{ijk}}) - \Delta x_i ln(R_{ijk} + \Delta y_j) - \Delta y_j ln(R_{ijk} + \Delta x_i)]\]</div>
+<p>where <span class="math notranslate nohighlight">\(\Delta x_i = (x_i - x_p)\)</span>, <span class="math notranslate nohighlight">\(\Delta y_j = (y_j - y_p)\)</span>, <span class="math notranslate nohighlight">\(\Delta z_k = (z_k - z_p)\)</span>, and <span class="math notranslate nohighlight">\(\mu_{ijk} = (-1)^i (-1)^j (-1)^k\)</span>. <span class="math notranslate nohighlight">\(\Delta \rho\)</span> is the density contrast of the prism, and <span class="math notranslate nohighlight">\(\Gamma\)</span> is the universal gravitational constant. <span class="math notranslate nohighlight">\(x_p,  y_p,\)</span> and <span class="math notranslate nohighlight">\(z_p\)</span> are the coordinates of the measurement point P, and <span class="math notranslate nohighlight">\(x_i, y_j,\)</span> and <span class="math notranslate nohighlight">\(z_k\)</span> are the coordinates of the corners of the prism, where <span class="math notranslate nohighlight">\((i, j, k) = (1, 2)\)</span>. <span class="math notranslate nohighlight">\(R_{ijk}\)</span> is the distance from the measurement point to a corner at <span class="math notranslate nohighlight">\(x_i, y_j, z_k\)</span> and is given by</p>
+<div class="math notranslate nohighlight">
+\[R_{ijk} = (\Delta x_{i}^{2} + \Delta y_{j}^{2} + \Delta z_{k}^{2})^{1/2}\]</div>
+<p>For computational purposes, this equation can be expanded, demonstrating that the gravitational attraction of the prism is essentially the sum of the gravitational attraction of all its sides. Expanding over the first sum gives:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+  \Delta g = \Gamma \Delta \rho \sum_{i=1}^{2} \sum_{j=1}^{2} [\mu_{ij1}[\Delta z_1 tan^{-1}(\frac{\Delta x_i \Delta y_j}{\Delta z_1 R_{ij1}}) - \Delta x_i ln(R_{ij1} + \Delta y_j) - \Delta y_j ln(R_{ij1} + \Delta x_i)] \nonumber \\
+  + \mu_{ij2}[\Delta z_2 tan^{-1} (\frac{\Delta x_i \Delta y_j}{\Delta z_2 R_{ij2}}) - \Delta x_i ln(R_{ij2} + \Delta y_j) - \Delta y_j ln(R_{ij2} + \Delta x_i)]] \nonumber
+\end{align}\end{split}\]</div>
+<p>Expanding over the second sum gives:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+  \Delta g = \Gamma \Delta \rho \sum_{i=1}^{2}[\mu_{i11}[\Delta z_1 tan^{-1}(\frac{\Delta x_i \Delta y_1}{\Delta z_1 R_{i11}}) - \Delta x_i ln(R_{i11} + \Delta y_1) - \Delta y_1 ln(R_{i11} + \Delta x_i)] \nonumber \\
+  + \mu_{i12}[\Delta z_2 tan^{-1}(\frac{\Delta x_i \Delta y_1}{\Delta z_2 R_{i12}}) - \Delta x_i ln(R_{i12} + \Delta y_1) - \Delta y_1 ln(R_{i12} + \Delta x_i)] \nonumber \\
+  + \mu_{i21}[\Delta z_1 tan^{-1}(\frac{\Delta x_i \Delta y_2}{\Delta z_1 R_{i21}}) - \Delta x_i ln(R_{i21} + \Delta y_2) - \Delta y_2 ln(R_{i21} + \Delta x_i)] \nonumber \\
+  + \mu_{i22}[\Delta z_2 tan^{-1}(\frac{\Delta x_i \Delta y_2}{\Delta z_2 R_{i22}}) - \Delta x_i ln(R_{i22} + \Delta y_2) - \Delta y_2 ln(R_{i22} + \Delta x_i)]] \nonumber
+\end{align}\end{split}\]</div>
+<p>Expanding over the final sum gives:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+  \Delta g = \Gamma \Delta \rho [\mu_{111}[\Delta z_1 tan^{-1}(\frac{\Delta x_1 \Delta y_1}{\Delta z_1 R_{111}}) - \Delta x_1 ln(R_{111}+\Delta y_1) - \Delta y_1 ln(R_{111}+\Delta x_1)] \nonumber \\
+  + \mu_{112}[\Delta z_2 tan^{-1}(\frac{\Delta x_1 \Delta y_1}{\Delta z_2 R_{112}}) - \Delta x_1 ln(R_{112}+\Delta y_1) -\Delta y_1 ln(R_{112}+\Delta x_1)] \nonumber \\
+  + \mu_{121}[\Delta z_1 tan^{-1}(\frac{\Delta x_1 \Delta y_2}{\Delta z_1 R_{121}}) - \Delta x_1 ln(R_{121} + \Delta y_2) - \Delta y_2 ln(R_{121}+\Delta x_1)] \nonumber \\
+  + \mu_{122}[\Delta z_2 tan^{-1}(\frac{\Delta x_1 \Delta y_2}{\Delta z_2 R_{122}}) - \Delta x_1 ln(R_{122}+\Delta y_2) - \Delta y_2 ln(R_{122}+\Delta x_1)] \nonumber \\
+  + \mu_{211}[\Delta z_1 tan^{-1}(\frac{\Delta x_2 \Delta y_1}{\Delta z_1 R_{211}}) - \Delta x_2 ln(R_{211}+\Delta y_1) - \Delta y_1 ln(R_{211}+\Delta x_2)] \nonumber \\
+  + \mu_{212}[\Delta z_2 tan^{-1}(\frac{\Delta x_2 \Delta y_1}{\Delta z_2 R_{212}}) - \Delta x_2 ln(R_{212}+\Delta y_1) - \Delta y_1 ln(R_{212}+\Delta x_2)] \nonumber \\
+  + \mu_{221}[\Delta z_1 tan^{-1}(\frac{\Delta x_2 \Delta y_2}{\Delta z_1 R_{221}}) - \Delta x_2 ln(R_{221}+\Delta y_2) - \Delta y_2 ln(R_{221}+\Delta x_2)] \nonumber \\
+  + \mu_{222}[\Delta z_2 tan^{-1}(\frac{\Delta x_2 \Delta y_2}{\Delta z_2 R_{222}}) - \Delta x_2 ln(R_{222}+\Delta y_2) - \Delta y_2 ln(R_{222}+\Delta x_2)]] \nonumber
+\end{align}\end{split}\]</div>
+<p>The expanded sums together define the geometry of the prism relative to the observation point, which is a constant in the following inversion. In other words, each prism in the domain will have a single geometry coefficient for each observation point on the grid.</p>
+<p>To set-up this gravity formula for the inversion, we have to extend it to the case of multiple prisms. In the inversion, we wish to invert satellite gravity data of N observation points to obtain the best estimate of the density of M subsurface prisms (and hence M model parameters) according to the model defined above.</p>
+<p>First, define each <span class="math notranslate nohighlight">\(\Delta x_1\)</span> as the difference between <span class="math notranslate nohighlight">\(x_{p}\)</span> and <span class="math notranslate nohighlight">\(x_{i}\)</span> such that <span class="math notranslate nohighlight">\(\Delta x_1\)</span> is a 1 x N vector of differences between the prism’s <span class="math notranslate nohighlight">\(x_1\)</span> edge and each observation point. Similarly, define each <span class="math notranslate nohighlight">\(\Delta x_2\)</span> as the difference between the next edge of the prism in the x direction and each observation point, such that it is also a 1 x N vector. This can be done iteratively for each prism such that <span class="math notranslate nohighlight">\(\Delta x_1\)</span> and <span class="math notranslate nohighlight">\(\Delta x_2\)</span> are each an M x N matrix, where each row corresponds to a prism and each column an observation point, the elements of which describe the difference in the x-direction between that prism’s edge (1 or 2) and the observation point. For example, <span class="math notranslate nohighlight">\(\Delta x_1(1,1)\)</span> is the difference between the first prism’s first edge and the first observation point. Likewise, the same procedure is repeated for <span class="math notranslate nohighlight">\(\Delta y_1, \Delta y_2, \Delta z_1, \Delta z_2\)</span>.</p>
+<p>Once this geometry is defined, the operations in the expanded sum can then be carried out as element-wise matrix operations, such that there is an final M x N matrix that describes the set geometry of each prism relative to each observation point. We will call this matrix <strong>Z</strong>. The gravity anomaly at any observation point due to the combined effect of all the prisms is then the matrix product of <strong>Z</strong> and <span class="math notranslate nohighlight">\(\mathbf{\Delta \rho}\)</span>, where <span class="math notranslate nohighlight">\(\mathbf{\Delta \rho}\)</span> is an M x 1 vector containing the differential density of each prism.</p>
+<div class="math notranslate nohighlight">
+\[\Delta \mathbf{g} = \Gamma \mathbf{Z}^T \Delta \mathbf{\rho}\]</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">BayGrav3D</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="theory.html">Theoretical Background</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1. Gravitational Anomaly over a 3D Prism</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lls_inversion.html">2. Linear Least Squares Inversion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="priors.html">3. Priors</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="theory.html">Theoretical Background</a><ul>
+      <li>Previous: <a href="theory.html" title="previous chapter">Theoretical Background</a></li>
+      <li>Next: <a href="lls_inversion.html" title="next chapter"><span class="section-number">2. </span>Linear Least Squares Inversion</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Erin Hightower.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/files/grav_over_prism.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

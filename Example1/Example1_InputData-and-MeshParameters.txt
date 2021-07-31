@@ -1,0 +1,33 @@
+INPUT DATA FILES FOR GRAVITY:
+gravity
+	= BayGrav3D/Example1/data_gravity_sr3.7_20_EN.csv
+
+INPUT DATA FILES FOR CONSTRUCTING THE PRIOR:
+structure
+	= BayGrav3D/Example1/data_priors_horizons_MCSbase_all_w_SedThick.txt
+bathymetry
+	= BayGrav3D/Example1/data_priors_bathymetry.txt
+density
+	= BayGrav3D/Example1/data_priors_density_all_6-30-20_UTM.txt
+velocity
+	= 
+earthquakes
+	= 
+coastline
+	= 
+
+INPUT REFERENCE POINTS AND SHIFT VALUE FOR TRANSFORMING DATA
+coord rotation refpoints
+	= BayGrav3D/Example1/rotational_ref_line_SISIEline02.txt
+data shiftx, shifty
+	= -1166635.0222,4391863.3063
+
+INPUT MESH PARAMETERS FOR CONSTRUCTING THE GRID
+mesh x,y,z number of prisms
+	= 20, 20, 20
+mesh min,max vertical resolution
+	= 5  100
+mesh style
+	= var
+mesh limits
+	= 0, 342811.6408, 0, 424183.8526, 1, 25000

@@ -1,0 +1,404 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>2. Linear Least Squares Inversion &#8212; BayGrav3D 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="3. Priors" href="priors.html" />
+    <link rel="prev" title="1. Gravitational Anomaly over a 3D Prism" href="grav_over_prism.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="linear-least-squares-inversion">
+<h1><span class="section-number">2. </span>Linear Least Squares Inversion<a class="headerlink" href="#linear-least-squares-inversion" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-linear-least-squares-solution">
+<h2><span class="section-number">2.1. </span>The Linear Least Squares Solution<a class="headerlink" href="#the-linear-least-squares-solution" title="Permalink to this headline">¶</a></h2>
+<p>The method for linear and nonlinear least squares inversion is covered in many texts, but we will be following the notation and convention of Aster et al. (2013) <em>Parameter Estimation and Inverse Problems</em>. Before implementing a full gravity inversion for the Puysegur region, we perform gravity inversions on synthetic gravity models for both a simple buried object and for a simplified subduction system, to set-up and test the appropriate equations and the performance of the inversion.</p>
+<p>For N data points and M model parameters, where <span class="math notranslate nohighlight">\(g_i(\textbf{m})\)</span> is the model prediction of the <span class="math notranslate nohighlight">\(i^{th}\)</span> datum, the least squares misfit is defined as:</p>
+<div class="math notranslate nohighlight">
+\[F(\textbf{m})=\frac{1}{2} \sum_{i=1}^{N} (d_i - g_i(\textbf{m}))^2\]</div>
+<p>The Gauss-Newton algorithm for the solution of the model parameters that minimizes this least squares misfit is:</p>
+<div class="math notranslate nohighlight">
+\[\textbf{m} = \textbf{m}_o + (\textbf{G}^T\textbf{G})^{-1} \textbf{G}^T (\textbf{d} - \textbf{g}(\textbf{m}_o))\]</div>
+<p>Here, <span class="math notranslate nohighlight">\(\textbf{G}= \frac{\partial g_i}{\partial m_k}\)</span> is an N x M matrix of the partial derivatives of <strong>g</strong>. For a case where the predicted data are a linear combination of the model parameters (i.e. the case where the derivative of the model with respect to the model parameters is not dependent on the model parameters), our prediction can be written directly as <span class="math notranslate nohighlight">\(\mathbf{Gm}\)</span>, in which case the linear least squares solution reduces to:</p>
+<div class="math notranslate nohighlight">
+\[\textbf{m} = (\textbf{G}^T\textbf{G})^{-1} \textbf{G}^T (\textbf{d})\]</div>
+<p>We can also write this equation as the product of the Hessian, the second derivative of the misfit with respect to the model parameters (<span class="math notranslate nohighlight">\(\mathbf{H} = \frac{\partial^2 F}{\partial m_k \partial m_k}\)</span>, and the gradient, <span class="math notranslate nohighlight">\(\mathbf{\gamma}=\frac{\partial F}{\partial m_k}\)</span>, the first derivative of the misfit with respect to the model parameters.</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{m} = \mathbf{H}^{-1}\mathbf{\gamma}\]</div>
+<p>From section 1, we know that our model is, in component form:</p>
+<div class="math notranslate nohighlight">
+\[\Delta g_i = \Gamma Z_{ik}^T \Delta \rho_k\]</div>
+<p>For each observation $g_i$, the derivative with respect to the model parameter <span class="math notranslate nohighlight">\(\Delta \rho_k\)</span> is simply <span class="math notranslate nohighlight">\(\Gamma Z_{ik}^T\)</span>. This means that <span class="math notranslate nohighlight">\(\frac{\partial g_1}{\partial m_1}\)</span> is <span class="math notranslate nohighlight">\(\Gamma Z_{11}^T\)</span>, <span class="math notranslate nohighlight">\(\frac{\partial g_1}{\partial m_2}\)</span> is <span class="math notranslate nohighlight">\(\Gamma Z_{12}^T\)</span>, and so on. Continuing this and populating our <strong>G</strong> matrix as defined above, we can see that the <strong>G</strong> matrix is in fact just <span class="math notranslate nohighlight">\(\Gamma \mathbf{Z}^T\)</span>. This means that our linear model can be written:</p>
+<div class="math notranslate nohighlight">
+\[\Delta \mathbf{g} = \mathbf{G} \Delta \mathbf{\rho}\]</div>
+<p>Once <strong>G</strong> is computed, it remains a constant, and the only unknowns are the <span class="math notranslate nohighlight">\(\Delta \rho\)</span>, which we will refer to as <strong>m</strong>, the model parameters to be estimated, and the model is in fact linear. The data <strong>d</strong> are the observed gravity anomaly values from the Sandwell et al. (2014) global gravity grid and the model parameters to be estimated are the differential densities of each discretized block in the subsurface <span class="math notranslate nohighlight">\(\Delta \rho_i\)</span>.</p>
+</div>
+<div class="section" id="bayes-theorem-and-incorporating-data-errors">
+<h2><span class="section-number">2.2. </span>Bayes Theorem and Incorporating Data Errors<a class="headerlink" href="#bayes-theorem-and-incorporating-data-errors" title="Permalink to this headline">¶</a></h2>
+<p>To accommodate both data errors and prior constraints on the model parameters, we take a Bayesian approach and calculate the probability that the model parameters take on certain values given the observed data and the prior information. Bayes Theorem states that the probability of the model parameters given the data is proportional to the probability of the data given the model times the probability of the model:</p>
+<div class="math notranslate nohighlight">
+\[P(\mathbf{m}|\mathbf{d}) \propto P(\mathbf{d}|\mathbf{m})P(\mathbf{m})\]</div>
+<p>In this case, P(<strong>m</strong>) is a prior that we can use to constrain the model parameters to certain values given our existing geophysical knowledge.</p>
+<p>First, however, we will consider the case where we have a constant prior, such that <span class="math notranslate nohighlight">\(P(\textbf{m}) = 1\)</span> and use Bayes Theorem to incorporate the effect of the data errors on our model. Thus, Bayes Theorem simplifies to:</p>
+<div class="math notranslate nohighlight">
+\[P(\mathbf{m}|\mathbf{d}) \propto P(\mathbf{d}|\mathbf{m})=P(d_1|\mathbf{m})P(d_2|\mathbf{m})...P(d_n|\mathbf{m})\]</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This makes the key assumption that the data are independent. In the case of gravity, we are dealing with the relative attraction of both adjacent and distal blocks of mass and with gridded gravity data that has undergone some degree of interpolation. Thus, the data are not actually independent. That is, the probability that the gravity is high in one location, say over the Puysegur Ridge, given the model, is not entirely independent of the fact that it is low in another, like the trench, given the model, because that gravity high is the result of a model that simultaneously requires an adjacent gravity low. This can be seen in forward modeling of trench-perpendicular gravity profiles that show trade off in the fit of the gravity between the two sides of the plate boundary, depending on the chosen density distribution. Thus, the probability of two data points for instance is in reality <span class="math notranslate nohighlight">\(P(d1,d2)=P(d1)P(d2|d1)\)</span> and so on and so forth for n data points. How <span class="math notranslate nohighlight">\(P(d2|d1)\)</span> would differ from simply <span class="math notranslate nohighlight">\(P(d2)\)</span> defined by a Gaussian for the point d2 with some known <span class="math notranslate nohighlight">\(\sigma_d\)</span> is unknown and difficult to quantify given the interdependence of all the data points. If we assume that the perturbation to the probability of d2 by the interdependence is small and that the actual data points we use are distinct gravity measurements, then we can make the simplifying assumption that the data are independent.</p>
+</div>
+<p>Thus, we can incorporate the data error and priors with the following formulation. Assuming each data point can be represented by a Gaussian distribution with known error, we can take the product of all these probability distributions. The product of a set of exponentials (i.e. of a set of Gaussians) becomes the exponential of the sum of the Gaussian exponents:</p>
+<div class="math notranslate nohighlight">
+\[P(\mathbf{d}|\mathbf{m})=\frac{1}{\sigma_{d}^{N} (2\pi)^{N/2}} exp[-\frac{1}{2\sigma_{d}^{2}} \sum_{i=1}^{N} (d_i - \mu_i)^2]\]</div>
+<p>where <span class="math notranslate nohighlight">\(\sigma_d\)</span> is the standard deviation of each data point with mean <span class="math notranslate nohighlight">\(\mu\)</span>.</p>
+<p>We can see that the exponent term is similar to the definition of the misfit defined previously, so we can define the new misfit as:</p>
+<div class="math notranslate nohighlight">
+\[F(\mathbf{\mu})=\frac{1}{2\sigma_{d}^{2}} \sum_{i=1}^{N} (d_i - \mu_i)^2\]</div>
+<p>That is, we are no minimizing the difference between the known and predicted gravity, given the error in the gravity data. This is for the case when our known $sigma_d$ is the same for all the data points. For the case where each data point has a different standard deviation, the <span class="math notranslate nohighlight">\(\sigma_{d}^{2}\)</span> moves inside the sum.</p>
+<p>Now, we can write:</p>
+<div class="math notranslate nohighlight">
+\[P(\textbf{d}|\textbf{m})=\frac{1}{\sigma_{d}^{N} (2\pi)^{N/2}} exp(-F(\mathbf{\mu}))\]</div>
+<p>and dropping the coefficient, we can make this a proportionality and write this with the simplified Bayes Theorem:</p>
+<div class="math notranslate nohighlight">
+\[P(\textbf{m}|\textbf{d}) \propto P(\textbf{d}|\textbf{m}) \propto exp(-F(\mathbf{\mu}))\]</div>
+<p>Now, for the general case where each of the $d_i$ are predicted by the model $g_i(textbf{m})$, $mu=g_i(textbf{m})$ and we have:</p>
+<div class="math notranslate nohighlight">
+\[P(\textbf{m}|\textbf{d}) \propto exp(-F(g_i(\textbf{m})))
+F(\textbf{m}) = \frac{1}{2\sigma_{d}^{2}} \sum_{i=1}^{N} (d_i - g_i(\textbf{m}))^2\]</div>
+<p>Thus, minimizing the new misfit F(<strong>m</strong>) is equivalent to maximizing <span class="math notranslate nohighlight">\(P(\textbf{m}|\textbf{d})\)</span>: finding the best estimate of <strong>m</strong> that maximizes the posterior probability <span class="math notranslate nohighlight">\(P(\textbf{m}|\textbf{d})\)</span>.</p>
+<p>We can now define a diagonal and symmetric weight matrix <strong>W</strong> and use a variable substitution to derive the least squares solution that is weighted by the data errors. Let <span class="math notranslate nohighlight">\(d_i'=d_i/\sigma_i\)</span> and <span class="math notranslate nohighlight">\(g_i'=g_i/\sigma_i\)</span>. One can construct a matrix <strong>W</strong> such that <span class="math notranslate nohighlight">\(\mathbf{d'}=\textbf{W}\textbf{d}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{g'}=\textbf{W}\textbf{g}\)</span>. Starting with our misfit expression, we can make this substitution and arrive at a general expression for the nonlinear LSS in terms of <span class="math notranslate nohighlight">\(\mathbf{d'}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{g'}\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    F(\textbf{m}) &amp;= \frac{1}{2} \sum_{i=1}^{N} \bigg(\frac{d_i - g_i(\textbf{m})}{\sigma_i}\bigg)^2 \nonumber \\
+    &amp;= \frac{1}{2} \sum_{i=1}^{N} \bigg(\frac{d_i}{\sigma_i} - \frac{g_i}{\sigma_i}\bigg)^2 \nonumber \\
+    &amp;= \frac{1}{2} \sum_{i=1}^{N} (d'_i - g'_i)^2 \nonumber
+\end{align}\end{split}\]</div>
+<p>Now this is just the form of the original “constant <span class="math notranslate nohighlight">\(\sigma\)</span>” case of the misfit and we can apply the Gauss-Newton Algorithm for the nonlinear least squares solution directly for a case of <span class="math notranslate nohighlight">\(\mathbf{G'}\)</span>.</p>
+<div class="math notranslate nohighlight">
+\[F(\textbf{m})=\frac{1}{2} (\mathbf{d'} - \mathbf{g'})^T (\mathbf{d'} - \mathbf{g'})
+\textbf{m} = \textbf{m}_o + (\mathbf{G'}^T \mathbf{G'})^{-1} \mathbf{G'}^T (\mathbf{d'} - \mathbf{g'}(\mathbf{m}_o))\]</div>
+<p>Taking the original definition of <span class="math notranslate nohighlight">\(\mathbf{d'}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{g'}\)</span> above, we can substitute back in to find the weighted nonlinear least squares solution. We also know that <span class="math notranslate nohighlight">\(\mathbf{G'} = \nabla_m \mathbf{g'}\)</span>, just by definition of the <strong>G</strong> matrix in general, remembering that <strong>W</strong> does not depend on the model parameters and is thus a matrix of constants in this case.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \mathbf{G'} &amp;= \nabla_m \mathbf{g'} \nonumber \\
+    &amp;= \nabla_m \mathbf{Wg} \nonumber \\
+    &amp;= \mathbf{W} \nabla_m \mathbf{g} \nonumber \\
+    &amp;= \mathbf{WG} \nonumber
+\end{align}\end{split}\]</div>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \textbf{m} &amp;= \textbf{m}_o + ((\textbf{WG})^T (\textbf{WG}))^{-1} (\textbf{WG})^T (\textbf{W}(\textbf{d} - \textbf{g}(\mathbf{m}_o))) \nonumber \\
+    &amp;= \textbf{m}_o + (\textbf{G}^T \textbf{W}^T \textbf{WG})^{-1} \textbf{G}^T \textbf{W}^T \textbf{W} (\textbf{d} - \textbf{g}(\mathbf{m}_o)) \nonumber \\
+    &amp;= \textbf{m}_o + (\textbf{G}^T \textbf{W}^2 \textbf{G})^{-1} \textbf{G}^T \textbf{W}^2 (\textbf{d} - \textbf{g}(\mathbf{m}_o)) \nonumber
+\end{align}\end{split}\]</div>
+<p>In the linear case, <span class="math notranslate nohighlight">\(\mathbf{g}(\mathbf{m}_o) = \mathbf{Gm}_o\)</span> and the solution reduces to:</p>
+<div class="math notranslate nohighlight">
+\[\textbf{m} = (\textbf{G}^T \textbf{W}^2 \textbf{G})^{-1} \textbf{G}^T \textbf{W}^2 \textbf{d}\]</div>
+<p>In the case of constant priors and with constant data error <span class="math notranslate nohighlight">\(\sigma_d\)</span> for all points, this equation will actually collapse back to its original unweighted form. However, for the case of non-constant priors, the weights do effect the final estimate of <strong>m</strong>. We will now derive a similar weighted expression that regularizes the solution and stabilizes the inversion.</p>
+</div>
+<div class="section" id="tikhonov-regularization">
+<h2><span class="section-number">2.3. </span>Tikhonov Regularization<a class="headerlink" href="#tikhonov-regularization" title="Permalink to this headline">¶</a></h2>
+<p>Linear least squares, even when using the generalized inverse or the truncated generalized inverse to handle small singular values, is often not sufficient for many inverse problems. Thus, another form of regularization must be applied; a common one is Tikhonov regularization. Zeroth order Tikhonov regularization favors models that are small. In other words, it is identical to applying a prior that is a Gaussian with a mean of zero and thus minimizes the square of the model parameters. First order Tikhonov minimizes the square of the first derivative of the spatially discretized model parameters (i.e. the slopes), which are spatially discretized and thus serves as a flatness criterion. Second order Tikhonov minimizes the square of the second derivative of the model parameters with respect to space (i.e. the gradient) and thus serves as a smoothness criterion.</p>
+<p>Because Tikhonov regularization is essentially applying a prior of either zero, flatness, or smoothness, we can derive the regularized least squares solution by defining a new misfit, and because Tikhonov minimizes the square of the zeroth, first, or second derivative, the misfit equation remains exactly quadratic and the solution linear. Above, we defined a new misfit that incorporated the data error. Likewise, we adjust the misfit equation to reflect the additional minimization of the model parameters or their first or second derivatives. As our model is linear, we will use the fact that <span class="math notranslate nohighlight">\(\mathbf{g} = \mathbf{Gm}\)</span> and derive the solution using augmented matrices. <strong>L</strong> is either the identity matrix, the first derivative finite difference operator, or the second derivative finite difference operator for zeroth, first, and second order Tikhonov, respectively, and <span class="math notranslate nohighlight">\(\alpha\)</span> is a constant. Using the weighted form of <strong>d</strong> and <strong>G</strong> defined previously, the new misfit that minimizes both the least squares difference between the true and predicted gravity and the differences between model parameters is:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    F(\mathbf{m}) &amp;= \frac{1}{2}(\mathbf{Wd} - \mathbf{WG}\mathbf{m})^{T}(\mathbf{Wd}-\mathbf{WG}\mathbf{m}) + \alpha^2 (\mathbf{L}\mathbf{m})^T (\mathbf{L}\mathbf{m}) \\
+    F(\mathbf{m}) &amp;= \frac{1}{2} \bigg( (\mathbf{Wd} - \mathbf{WGm})^T (\mathbf{Wd} - \mathbf{WGm}) + 2\alpha^2 (\mathbf{Lm})^T (\mathbf{Lm})\bigg)
+\end{align}\end{split}\]</div>
+<p>Because alpha is just a constant, we can just absorb the 2 into alpha and write this equation with augmented matrices.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    F(\textbf{m}) &amp;= \frac{1}{2}\bigg( \begin{bmatrix} \mathbf{Wd} \\ \mathbf{0} \end{bmatrix}
+        - \begin{bmatrix} \mathbf{WG} \\ \alpha \mathbf{L} \end{bmatrix} \mathbf{m} \bigg)^T
+        \bigg(\begin{bmatrix} \mathbf{Wd} \\ \mathbf{0} \end{bmatrix}
+        - \begin{bmatrix} \mathbf{WG} \\ \alpha \mathbf{L} \end{bmatrix} \mathbf{m}\bigg) \\
+    F(\mathbf{m}) &amp;= \frac{1}{2} (\mathbf{d}_{aug} - \mathbf{G}_{aug} \mathbf{m})^T (\mathbf{d}_{aug} - \mathbf{G}_{aug} \mathbf{m})
+\end{align}\end{split}\]</div>
+<p>Now this is just the original form of the misfit equation and we can use the Gauss-Newton solution for the non-linear least squares with these new variables:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \mathbf{m} &amp;= \mathbf{m}_o + (\mathbf{G}_{aug}^{T} \mathbf{G}_{aug})^{-1} \mathbf{G}_{aug}^{T} (\mathbf{d}_{aug} - \mathbf{G}_{aug} \mathbf{m}_o) \nonumber \\
+    &amp;= \mathbf{m}_o + (\mathbf{G}_{aug}^{T} \mathbf{G}_{aug})^{-1} \mathbf{G}_{aug}^{T} \mathbf{d}_{aug} - (\mathbf{G}_{aug}^{T} \mathbf{G}_{aug})^{-1} \mathbf{G}_{aug}^{T} \mathbf{G}_{aug} \mathbf{m}_o \nonumber \\
+    &amp;= \mathbf{m}_o + (\mathbf{G}_{aug}^{T} \mathbf{G}_{aug})^{-1} \mathbf{G}_{aug}^{T} \mathbf{d}_{aug} - \mathbf{m}_o \nonumber \\
+    &amp;= (\mathbf{G}_{aug}^{T} \mathbf{G}_{aug})^{-1} \mathbf{G}_{aug}^{T} \mathbf{d}_{aug} \nonumber
+\end{align}\end{split}\]</div>
+<p>Because our problem is linear, the nonlinear LS solution reduces back to the linear form as expected. Now substituting back in our definitions of <span class="math notranslate nohighlight">\(\mathbf{G}_{aug}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{d}_{aug}\)</span>, we can arrive at the final weighted, Tikhonov regularized solution.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \mathbf{G}_{aug}^{T} \mathbf{G}_{aug} &amp;= \begin{bmatrix} (\mathbf{WG})^{T} \alpha \mathbf{L}^{T} \end{bmatrix} \begin{bmatrix} \mathbf{WG} \\ \alpha \mathbf{L} \end{bmatrix} = (\mathbf{WG})^{T} \mathbf{WG} + \alpha^2 \mathbf{L}^{T} \mathbf{L} \nonumber \\
+    &amp;= \mathbf{G}^T \mathbf{W}^T \mathbf{WG} + \alpha^2 \mathbf{L}^T \mathbf{L} \nonumber \\
+    &amp;= \mathbf{G}^T \mathbf{W}^2 \mathbf{G} + \alpha^2 \mathbf{L}^T \mathbf{L} \nonumber \\
+    \mathbf{G}_{aug}^{T} \mathbf{d}_{aug} &amp;= \begin{bmatrix} (\mathbf{WG})^{T} \alpha \mathbf{L}^{T} \end{bmatrix} \begin{bmatrix} \mathbf{Wd} \\ \mathbf{0} \end{bmatrix} = (\mathbf{WG})^{T} \mathbf{Wd} \nonumber \\
+    &amp;= \mathbf{G}^T \mathbf{W}^2 \mathbf{d} \nonumber \\
+    &amp; \nonumber \\
+    \mathbf{m} &amp;= (\mathbf{G}^{T} \mathbf{W}^2 \mathbf{G} + \alpha^2 \mathbf{L}^{T} \mathbf{L})^{-1} \mathbf{G}^{T} \mathbf{W}^2 \mathbf{d} \nonumber
+\end{align}\end{split}\]</div>
+<p>Knowing that <span class="math notranslate nohighlight">\(\mathbf{m} = \mathbf{H}^{-1} \mathbf{\gamma}\)</span> we can also define the weighted Tikhonov regularized Hessian and gradient:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{H} = (\mathbf{G}^{T} \mathbf{W}^2 \mathbf{G} + \alpha^2 \mathbf{L}^{T} \mathbf{L})
+\mathbf{\gamma} = (\mathbf{G}^{T} \mathbf{W}^2 \mathbf{d})\]</div>
+<p>For three dimensional models, first and second order Tikhonov regularization are implemented using a finite-difference approximation to the Laplacian operator of the appropriate dimensionality, and is thus the first or second derivative in the x-direction plus the first or second derivative in the y-direction plus the first or second derivative in the z-direction. Because the discretization of the grid will be different in the x, y, and z directions, we need to apply three different regularizations, with associated constants <span class="math notranslate nohighlight">\(\alpha\)</span> for the x-direction, <span class="math notranslate nohighlight">\(\beta\)</span> for the y-direction, and <span class="math notranslate nohighlight">\(\zeta\)</span> for the z-direction. Following the derivation of the weighted regularized solution above, we can see by inspection that the appropriate weighted Tikhonov regularized solution for the 3-dimensional case is:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{m}=(\mathbf{G}^{T}\mathbf{W}^2\mathbf{G} + \alpha^2\mathbf{L_x}^{T}\mathbf{L_x} + \beta^2\mathbf{L_y}^{T}\mathbf{L_y} + \zeta^2\mathbf{L_z}^{T}\mathbf{L_z})^{-1} (\mathbf{G}^{T}\mathbf{W}^2\mathbf{d})\]</div>
+</div>
+<div class="section" id="first-order-tikhonov-regularization-with-variable-grid-spacing">
+<h2><span class="section-number">2.4. </span>First Order Tikhonov Regularization with Variable Grid Spacing<a class="headerlink" href="#first-order-tikhonov-regularization-with-variable-grid-spacing" title="Permalink to this headline">¶</a></h2>
+<p>Determining the structure of the operator <strong>L</strong> for either first or second order Tikhonov is dependent on the grid structure. In the general, one-dimensional case, the finite difference approximation to the first derivative is:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial m_k}{\partial x} = \frac{1}{\Delta x}(-m_{k} + m_{k+1})\]</div>
+<p>This equation can be represented in the form of a tri-diagonal matrix operator, <strong>L</strong>, acting on a vector of the spatially discretized model parameters. <strong>L1</strong> is an M-1 x M matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \frac{\partial m_k}{\partial x} &amp;= \frac{1}{\Delta x}
+    \begin{bmatrix}
+    -1 &amp; 1 &amp; 0 &amp; \cdots &amp; 0 \\
+    0 &amp; -1 &amp; 1 &amp; \cdots &amp; 0 \\
+    \vdots &amp; \ddots &amp; \ddots &amp; \ddots &amp; 0 \\
+    0 &amp; \cdots &amp; 0 &amp; -1 &amp; 1
+    \end{bmatrix}
+    \begin{bmatrix}
+    m_1 \\ m_2 \\ \vdots \\ m_k
+    \end{bmatrix} \nonumber \\
+    &amp;= \frac{1}{\Delta x} \mathbf{L1m} \nonumber
+\end{align}\end{split}\]</div>
+<p>Because the discretization is variable even within the x, y, and z directions, the <strong>L</strong> matrices are unique for each of those directions and <span class="math notranslate nohighlight">\(\Delta x, \Delta y, \)</span>Delta z` is different for each pair of model parameters being regularized, so the <span class="math notranslate nohighlight">\(1/\Delta x\)</span> term must be brought inside the <strong>L</strong> matrix. The discretization is such that the model parameters are numbered first in the z-direction, then in the y-direction, then in the x-direction. This means that in the x direction we have to regularize parameters that are spaced length(z)*length(y) apart. In other words, model parameter 1 and model parameter 2 are not adjacent to one another in the x-direction because they lie at the same x-value. This means that we place the second diagonal of the matrix at $1+length(z)*length(y)$, and the <strong>L1</strong> matrix for the x-direction takes the form:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}\mathbf{L1}_x = \frac{\partial m_k}{\partial x} &amp;=
+    \begin{bmatrix}
+    \frac{-1}{\Delta x_1} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta x_1} &amp; 0 &amp; \cdots &amp; &amp; &amp; &amp; 0 \\
+    0 &amp; \frac{-1}{\Delta x_1} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta x_1} &amp; 0 &amp; \cdots &amp; &amp; &amp; 0 \\
+    \vdots &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \ddots &amp; \ddots &amp; &amp; &amp; \vdots \\
+    0 &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta x_p} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta x_p} &amp; 0 &amp; \cdots &amp; 0 \\
+    0 &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta x_{p+1}} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta x_{p+1}} &amp; 0 &amp; \cdots \\
+    \vdots &amp; &amp; &amp; &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \ddots &amp; \ddots\\
+    0 &amp; &amp; &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta x_{k-l}} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta x_{k-l}}
+    \end{bmatrix}
+    \begin{bmatrix}
+    m_1 \\ m_2 \\ \vdots \\ m_p \\ m_{p+1} \\ \vdots \\ m_k
+    \end{bmatrix} \nonumber \\ \nonumber
+\end{align}\end{split}\]</div>
+<p>where the length of the <span class="math notranslate nohighlight">\(\Delta x\)</span> vector that is applied to the <strong>L1</strong> matrix is <span class="math notranslate nohighlight">\(length(x)-1\)</span>. Every <span class="math notranslate nohighlight">\(length(z)*length(y)\)</span> rows are divided by <span class="math notranslate nohighlight">\(\Delta x_i\)</span> because for each of these sets of rows we are regularizing the difference between model parameters for all prisms in y and in z that have a <span class="math notranslate nohighlight">\(\Delta x\)</span> of <span class="math notranslate nohighlight">\(x_{p+1} - x_p\)</span>. After that set of rows, we move to the next pair of model parameters in the x-direction, which have a new <span class="math notranslate nohighlight">\(\Delta x\)</span> value. The <span class="math notranslate nohighlight">\(\mathbf{L1}_x\)</span> matrix is an <span class="math notranslate nohighlight">\((M-length(z)*length(y))\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<p>We can likewise create a similar matrix for the y-direction. However, because we move along the y-direction second in the grid, we place the second non-zero diagonal at <span class="math notranslate nohighlight">\(1+length(z)\)</span>, and in order to avoid regularizing nonadjacent parameters at the edges of the grid space (i.e. at the beginning and end of y where the numbering jumps to the next x-value), we also have to skip (zero out) a set of <span class="math notranslate nohighlight">\(length(z)\)</span> rows after each set of <span class="math notranslate nohighlight">\(length(z)*(length(y)-1)\)</span> rows. Each non-null set of rows consists of <span class="math notranslate nohighlight">\(length(y)-1\)</span> smaller sets of rows, each of <span class="math notranslate nohighlight">\(length(z)\)</span>, which are divided by their corresponding <span class="math notranslate nohighlight">\(\Delta y\)</span>. After the null rows, the sequence is repeated. The <span class="math notranslate nohighlight">\(\mathbf{L1}_y\)</span> matrix is an <span class="math notranslate nohighlight">\((M-length(z))\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}\mathbf{L1}_y = \frac{\partial m_k}{\partial y} &amp;=
+    \begin{bmatrix}
+    \frac{-1}{\Delta y_1} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta y_1} &amp; 0 &amp; \cdots &amp; &amp; &amp; &amp; 0 \\
+    0 &amp; \frac{-1}{\Delta y_1} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta y_1} &amp; 0 &amp; \cdots &amp; &amp; &amp; 0 \\
+    \vdots &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \ddots &amp; \ddots &amp; &amp; &amp; \vdots \\
+    0 &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta y_p} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta y_p} &amp; 0 &amp; \cdots &amp; 0 \\
+    0 &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta y_{p+1}} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta y_{p+1}} &amp; 0 &amp; \cdots \\
+    \vdots &amp; &amp; &amp; &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \ddots &amp; \ddots\\
+    0 &amp; &amp; &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta y_{k-l}} &amp; 0 &amp; \cdots &amp; \frac{1}{\Delta y_{k-l}}
+    \end{bmatrix}
+    \begin{bmatrix}
+    m_1 \\ m_2 \\ \vdots \\ m_p \\ m_{p+1} \\ \vdots \\ m_k
+    \end{bmatrix} \nonumber
+\end{align}\end{split}\]</div>
+<p>The <strong>L</strong> matrix for the z-direction takes the form of the standard first derivative finite difference operator, except that every <span class="math notranslate nohighlight">\(length(z)-1\)</span> rows are skipped in order to avoid regularizing parameters located at the top and bottom of the grid and not adjacent to one another. Each row in a set of <span class="math notranslate nohighlight">\(length(z)-1\)</span> rows is divided by its corresponding <span class="math notranslate nohighlight">\(\Delta z\)</span> value. Then a row is skipped (zeroed out) and the sequence of <span class="math notranslate nohighlight">\(\Delta z\)</span> is repeated. This makes the <span class="math notranslate nohighlight">\(\mathbf{L1}_z\)</span> matrix and <span class="math notranslate nohighlight">\((M-1)\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}\mathbf{L1}_z = \frac{\partial m_k}{\partial z} &amp;=
+    \begin{bmatrix}
+    \frac{-1}{\Delta z_1} &amp; \frac{1}{\Delta z_1} &amp; 0 &amp; \cdots &amp; &amp; &amp; \cdots &amp; 0 \\
+    0 &amp; \frac{-1}{\Delta z_1} &amp; \frac{1}{\Delta z_1} &amp; 0 &amp; \cdots &amp; &amp; \cdots &amp; 0 \\
+    \vdots &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; &amp; &amp; \vdots \\
+    0 &amp; \cdots &amp; 0 &amp; 0 &amp; 0 &amp; 0 &amp; \cdots &amp; 0 \\
+    0 &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta z_{p1}} &amp; \frac{1}{\Delta z_{p}} &amp; 0 &amp; \vdots \\
+    \vdots &amp; &amp; &amp; &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \\
+    0 &amp; \cdots &amp; &amp; &amp; \cdots &amp; 0 &amp; \frac{-1}{\Delta z_{k-l}} &amp; \frac{1}{\Delta z_{k-l}}
+    \end{bmatrix}
+    \begin{bmatrix}
+    m_1 \\ m_2 \\ \vdots \\ m_p \\ m_{p+1} \\ \vdots \\ m_k
+    \end{bmatrix} \nonumber
+\end{align}\end{split}\]</div>
+<p>Even though <span class="math notranslate nohighlight">\(\mathbf{L1}_x\)</span>, <span class="math notranslate nohighlight">\(\mathbf{L1}_y\)</span>, and <span class="math notranslate nohighlight">\(\mathbf{L1}_z\)</span> are each different sizes, the product of their transpose with themselves still results in an M x M matrix that is compatible with the least squares solution <strong>m</strong>. To be more explicit about the first order Tikhonov solution for variable grid refinement, we can write the solution as:</p>
+<div class="math notranslate nohighlight">
+\[\mathbf{m} = (\mathbf{G}^T \mathbf{W}^2 \mathbf{G} + \alpha^2 \mathbf{L1}_x^T \mathbf{L1}_x + \beta^2 \mathbf{L1}_y^T \mathbf{L1}_y + \zeta^2 \mathbf{L1}_z^T \mathbf{L1}_z)^{-1} (\mathbf{G}^T \mathbf{W}^2 \mathbf{d})\]</div>
+</div>
+<div class="section" id="second-order-tikhonov-regularization-for-variable-grid-spacing">
+<h2><span class="section-number">2.5. </span>Second Order Tikhonov Regularization for Variable Grid Spacing<a class="headerlink" href="#second-order-tikhonov-regularization-for-variable-grid-spacing" title="Permalink to this headline">¶</a></h2>
+<p>In the general, one-dimensional case, the finite difference approximation to the second derivative is:</p>
+<div class="math notranslate nohighlight">
+\[\frac{\partial^2 m_k}{\partial x^2} = \frac{1}{\Delta x^2}(m_{k-1} - 2m_k + m_{k+1})\]</div>
+<p>This equation can be represented in the form of a tri-diagonal matrix operator, <strong>L</strong>, acting on a vector of the spatially discretized model parameters. <strong>L2</strong> is an <span class="math notranslate nohighlight">\((M-2)\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    \frac{\partial^2 m_k}{\partial x^2} &amp;= \frac{1}{\Delta x^2}
+    \begin{bmatrix}
+    1 &amp; -2 &amp; 1 &amp; 0 &amp; \cdots &amp; 0 \\
+    0 &amp; 1 &amp; -2 &amp; 1 &amp; \cdots &amp; 0 \\
+    \vdots &amp; \ddots &amp; \ddots &amp; \ddots &amp; \ddots &amp; 0 \\
+    0 &amp; \cdots &amp; 0 &amp; 1 &amp; -2 &amp; 1
+    \end{bmatrix}
+    \begin{bmatrix}
+    m_1 \\ m_2 \\ \vdots \\ m_k
+    \end{bmatrix} \nonumber \\
+    &amp;= \frac{1}{\Delta x^2} \mathbf{L2m} \nonumber
+\end{align}\end{split}\]</div>
+<p>However, because the discretization is variable, we cannot use the straightforward formulation above and we have to consider that for each row, there are two different <span class="math notranslate nohighlight">\(\Delta x\)</span> involved. This being said, the simplest way to calculate the appropriate <span class="math notranslate nohighlight">\(\mathbf{L2}\)</span> matrix is as a function of the <span class="math notranslate nohighlight">\(\mathbf{L1}\)</span> matrix. The first derivative finite difference approximation is the approximation to the slope of a curve at the midpoint between two points <span class="math notranslate nohighlight">\(m_{k-1}\)</span> and <span class="math notranslate nohighlight">\(m_k\)</span>, separated by a distance <span class="math notranslate nohighlight">\(\Delta x_i\)</span>. We have already accounted for the variable <span class="math notranslate nohighlight">\(\Delta x_i\)</span> in the <span class="math notranslate nohighlight">\(\mathbf{L1}\)</span> matrix. The second derivative approximation then is the slope of the slope, i.e. the curvature, so we can do the same finite difference approximation again, by calculating the difference in the slopes between model parameters over the distance <span class="math notranslate nohighlight">\(\delta x_i\)</span> - the difference between the points at which the slopes were evaluated, which are the midpoints for each <span class="math notranslate nohighlight">\(\Delta x_i\)</span> segment. Thus, the second derivative finite difference approximation can be written as a function of the first derivative finite difference approximation as:</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}\frac{\partial^2 m_k}{\partial x^2} = \frac{1}{\delta x_j}\bigg(\frac{\partial m_{k+1}}{\partial x_{i+1}} - \frac{\partial m_k}{\partial x_i}\bigg)\\\frac{\partial^2 m_k}{\partial x^2} = \frac{1}{\delta x_j}\bigg(\frac{-m_k + m_{k+1}}{\Delta x_{i+1}} - \bigg(\frac{-m_{k-1} + m_k}{\Delta x_i}\bigg)\bigg)\end{aligned}\end{align} \]</div>
+<p>We can see that if all the <span class="math notranslate nohighlight">\(\Delta x_i\)</span>, and likewise <span class="math notranslate nohighlight">\(\delta x_j\)</span>, are equal, then this equation becomes the standard finite difference approximation to the second derivative above, but with all the <span class="math notranslate nohighlight">\(\Delta x_i\)</span> being different, we can leave the equation in this form and see that it is in fact the difference between different subsets of the <span class="math notranslate nohighlight">\(\mathbf{L1}\)</span> matrices, normalized by <span class="math notranslate nohighlight">\(\delta x = \frac{1}{2}(\Delta x_{i+1} + \Delta x_i)\)</span>. This method can be applied separately to the x, y, and z directions. The sets of rows that are subtracted from one another depend on the ordering of the model parameters and which direction is being regularized.</p>
+<p>Like with first order Tikhonov, the <strong>L</strong> matrices for second order Tikhonov are unique for each direction, x, y, and z. Following the reasoning for the <span class="math notranslate nohighlight">\(\mathbf{L1}_x\)</span> matrix, the second diagonal is at <span class="math notranslate nohighlight">\(1+length(z)*length(y)\)</span> and now the third diagonal is at <span class="math notranslate nohighlight">\(1+2*length(z)*length(y)\)</span>. Each block of <span class="math notranslate nohighlight">\(length(z)*length(y)\)</span> rows in <span class="math notranslate nohighlight">\(\mathbf{L1}_x\)</span> is subtracted from the subsequent <span class="math notranslate nohighlight">\(length(z)*length(y)\)</span> block of rows in <span class="math notranslate nohighlight">\(\mathbf{L1}_x\)</span>, and that new block is then multiplied by one over the respective distance <span class="math notranslate nohighlight">\(\delta x\)</span> for the parameters being regularized by those rows. This ultimately results in <span class="math notranslate nohighlight">\(\mathbf{L2}_x\)</span> being an <span class="math notranslate nohighlight">\((M - 2*length(z)*length(y))\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}\mathbf{L2}_x =
+    \begin{bmatrix}
+        \frac{1}{\delta x_1} \\
+        \frac{1}{\delta x_1} \\
+        \vdots \\
+        \frac{1}{\delta x_p} \\
+        \frac{1}{\delta x_p} \\
+        \vdots \\
+    \end{bmatrix}
+    .*
+    \begin{bmatrix}
+    \frac{1}{\Delta x_1} &amp; \cdots &amp; \frac{-1}{\Delta x_2}-\frac{1}{\Delta x_1} &amp; \cdots &amp; \frac{1}{\Delta x_2} &amp; \cdots &amp; &amp; &amp; &amp; 0 \\
+    0 &amp; \frac{1}{\Delta x_1} &amp; \cdots &amp; \frac{-1}{\Delta x_2}-\frac{1}{\Delta x_1} &amp; \cdots &amp; \frac{1}{\Delta x_2} &amp; \cdots &amp; &amp; &amp; 0 \\
+    \vdots &amp; &amp; \ddots &amp; &amp; \ddots &amp; &amp; \ddots &amp; &amp; &amp; \vdots\\
+    0 &amp; \cdots &amp; 0 &amp; \frac{1}{\Delta x_p} &amp; \cdots &amp; \frac{-1}{\Delta x_{p+1}}-\frac{1}{\Delta x_p} &amp; \cdots &amp; \frac{1}{\Delta x_{p+1}} &amp; &amp; \vdots \\
+    0 &amp; \cdots &amp; &amp; 0 &amp; \frac{1}{\Delta x_{p}} &amp; \cdots &amp; \frac{-1}{\Delta x_{p+1}}-\frac{1}{\Delta x_{p}} &amp; \cdots &amp; \frac{1}{\Delta x_{p+1}} &amp; 0\\
+    \vdots &amp; &amp; &amp; &amp; \ddots &amp; \ddots &amp; \ddots &amp; &amp; \ddots &amp; \ddots\\
+    \end{bmatrix} \nonumber
+\end{align}\end{split}\]</div>
+<p>The computation of the <span class="math notranslate nohighlight">\(\mathbf{L2_y}\)</span> matrix is similar to that of the <span class="math notranslate nohighlight">\(\mathbf{L2_x}\)</span> matrix in that is it determined by the <span class="math notranslate nohighlight">\(\mathbf{L1_y}\)</span> matrix. However, now the first diagonal is at <span class="math notranslate nohighlight">\(1 + length(z)\)</span> and the second diagonal is at <span class="math notranslate nohighlight">\(1+ 2*length(z)\)</span>. Each block of <span class="math notranslate nohighlight">\(length(z)\)</span> rows in <span class="math notranslate nohighlight">\(\mathbf{L1_y}\)</span> is subtracted from the subsequent block of <span class="math notranslate nohighlight">\(length(z)\)</span> rows of <span class="math notranslate nohighlight">\(\mathbf{L1_y}\)</span>. To make sure we don’t regularize parameters at opposite edges of the domain, we skip (zero out) a set of <span class="math notranslate nohighlight">\(2*length(z)\)</span> rows every <span class="math notranslate nohighlight">\(length(z)*(length(y)-2)\)</span> rows. Each of the resulting non-zero blocks of <span class="math notranslate nohighlight">\(length(z)\)</span> rows is divided element wise by its corresponding <span class="math notranslate nohighlight">\(\delta y\)</span> value, which result in an <span class="math notranslate nohighlight">\((M-2*length(z))\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+<p>For <span class="math notranslate nohighlight">\(\mathbf{L2_z}\)</span>, we do the same thing, except now each row is subtracted from the subsequent row, since the grid loops over the z-direction first. The second diagonal is in the second column and the third diagonal is in the third column. To avoid regularizing the top of the domain with the bottom, we zero two rows every <span class="math notranslate nohighlight">\(length(z)-2\)</span> rows. Each of the resulting non-zero blocks of <span class="math notranslate nohighlight">\(length(z)-2\)</span> rows is then divided by its corresponding <span class="math notranslate nohighlight">\(\delta z\)</span> value, and the resulting <span class="math notranslate nohighlight">\(\mathbf{L2_z}\)</span> matrix is an <span class="math notranslate nohighlight">\((M-2)\)</span> x <span class="math notranslate nohighlight">\(M\)</span> matrix.</p>
+</div>
+<div class="section" id="boundary-conditions-and-variable-order-tikhonov-regularization">
+<h2><span class="section-number">2.6. </span>Boundary Conditions and Variable Order Tikhonov Regularization<a class="headerlink" href="#boundary-conditions-and-variable-order-tikhonov-regularization" title="Permalink to this headline">¶</a></h2>
+<p>To ensure mathematical stability, we need to enforce an infinite boundary condition. By not imposing flatness in the far-field, we get abrupt density changes at the edge of the model domain and the classical gravity edge effect as a result. This does not make physical sense given the actual gravity data, so we suppress them with the infinite edge boundary condition, which lets the gravity smoothly continue off the edges of the model area. This is easily done in the forward model by making sure the edge prisms in the x and y directions are all sufficiently large that they are essentially infinite. The edge prisms of the gridded domain should each be at least long enough to extend the boundaries of the domain beyond the area for which we are calculating the gravity. However, to ensure that this boundary condition is applied in the actual inversion itself, there needs to be a flatness criterion between the edge parameters and their adjacent parameters. This can be done using first order Tikhonov regularization with a very large alpha value that minimizes the difference between the edge parameters and their adjacent values so much that the predicted density values of those two parameters are the same. Doing this requires that we apply different orders and/or strengths of Tikhonov regularization to different sets of model parameters simultaneously. In doing so, we can apply second order smoothing to the main model area while maintaining the flatness on the boundary.</p>
+<p>Like before, variable order Tikhonov can be achieved by redefining the misfit equation:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    F(\mathbf{m}) &amp;= \frac{1}{2}(\mathbf{Wd} - \mathbf{WG}\mathbf{m})^{T}(\mathbf{Wd}-\mathbf{WG}\mathbf{m}) \nonumber \\
+    &amp;+ \alpha^2 (\mathbf{L_x}\mathbf{m})^T (\mathbf{L_x}\mathbf{m}) + \beta^2(\mathbf{L_y}\mathbf{m})^T (\mathbf{L_y}\mathbf{m}) + \zeta^2(\mathbf{L_z}\mathbf{m})^T (\mathbf{L_z}\mathbf{m}) \nonumber \\
+    &amp;+ b^2(\mathbf{B_x}\mathbf{m})^T (\mathbf{B_x}\mathbf{m}) + b^2(\mathbf{B_y}\mathbf{m})^T (\mathbf{B_y}\mathbf{m}) \nonumber
+\end{align}\end{split}\]</div>
+<p>where b is the weight of the first order Tikhonov regularization applied to the boundary condition. <span class="math notranslate nohighlight">\(b=1e8\)</span> is usually sufficient to flatten the edges of the model. <span class="math notranslate nohighlight">\(\mathbf{B_x}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{B_y}\)</span> are the regularization matrices that apply the boundary conditions in the x and y directions, respectively. To implement the variable order Tikhonov, the structure of the <span class="math notranslate nohighlight">\(\mathbf{L_x}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{L_y}\)</span> matrices, either for first or second order, must be adjusted accordingly. The <span class="math notranslate nohighlight">\(\mathbf{B_x}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{B_y}\)</span> matrices are constructed from the <span class="math notranslate nohighlight">\(\mathbf{L1_x}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{L1_y}\)</span> matrices, respectively. They are essentially equal, except that only the rows that regularize parameters including edge values remain non-null; all rows that regularize parameters within the interior of the domain are zeroed out. The <span class="math notranslate nohighlight">\(\mathbf{L_x}\)</span> and <span class="math notranslate nohighlight">\(\mathbf{L_y}\)</span> matrices are then made to be the opposite. All rows that regularize parameters that include edges are zeroed out, so that only the interior parameters are regularized by these matrices. We can then easily apply different regularization weights to the edge versus the interior parameters to enforce the boundary condition.</p>
+<p>The five Tikhonov regularization terms can be combined into a single <span class="math notranslate nohighlight">\(\mathbf{L}\)</span> matrix such that</p>
+<div class="math notranslate nohighlight">
+\[ \begin{align}\begin{aligned}F(\mathbf{m}) = \frac{1}{2}(\mathbf{Wd} - \mathbf{WGm})^T (\mathbf{Wd} - \mathbf{WGm}) + \mathbf{m}^T \mathbf{L} \mathbf{m}\\\mathbf{m} = (\mathbf{G}^T \mathbf{W}^2 \mathbf{G} + \mathbf{L})^{-1}(\mathbf{G}^T\mathbf{W}^2\mathbf{d})\end{aligned}\end{align} \]</div>
+<p>where <span class="math notranslate nohighlight">\(\mathbf{L} = \alpha^2 \mathbf{L_x}^T\mathbf{L_x} + \beta^2 \mathbf{L_y}^T\mathbf{L_y} + \zeta^2 \mathbf{L_z}^T\mathbf{L_z} + b^2 \mathbf{B_x}^T \mathbf{B_x} + b^2 \mathbf{B_y}^T \mathbf{B_y}\)</span>. We can do this because we can rearrange the regularization terms in the misfit equation in the following way.</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{align}
+    F(\mathbf{m}) &amp;= \cdots + \alpha^2 (\mathbf{L_x}\mathbf{m})^T (\mathbf{L_x}\mathbf{m}) + \beta^2(\mathbf{L_y}\mathbf{m})^T (\mathbf{L_y}\mathbf{m}) + \zeta^2(\mathbf{L_z}\mathbf{m})^T (\mathbf{L_z}\mathbf{m}) \nonumber \\
+    &amp;+ b^2(\mathbf{B_x}\mathbf{m})^T (\mathbf{B_x}\mathbf{m}) + b^2(\mathbf{B_y}\mathbf{m})^T (\mathbf{B_y}\mathbf{m}) \nonumber \\
+    \\
+    &amp;= \cdots + \alpha^2 (\mathbf{m}^T \mathbf{L_x}^T)(\mathbf{L_x m}) + \beta^2 (\mathbf{m}^T \mathbf{L_y}^T)(\mathbf{L_y m}) + \zeta^2(\mathbf{m}^T \mathbf{L_z}^T)(\mathbf{L_z m}) \nonumber \\
+    &amp;+ b^2(\mathbf{m}^T \mathbf{B_x}^T)(\mathbf{B_x m}) + b^2(\mathbf{m}^T \mathbf{B_y}^T)(\mathbf{B_y m}) \nonumber \\
+    \\
+    &amp;= \cdots + (\alpha^2 \mathbf{m}^T\mathbf{L_x}^T\mathbf{L_x} + \beta^2 \mathbf{m}^T \mathbf{L_y}^T \mathbf{L_y} + \zeta^2 \mathbf{m}^T \mathbf{L_z}^T \mathbf{L_z} + b^2 \mathbf{m}^T \mathbf{B_x}^T \mathbf{B_x} + b^2 \mathbf{m}^T \mathbf{B_y}^T \mathbf{B_y})\mathbf{m} \nonumber \\
+    \\
+    &amp;= \cdots + \mathbf{m}^T(\alpha^2 \mathbf{L_x}^T\mathbf{L_x} + \beta^2\mathbf{L_y}^T \mathbf{L_y} + \zeta^2 \mathbf{L_z}^T \mathbf{L_z} + b^2 \mathbf{B_x}^T \mathbf{B_x} + b^2 \mathbf{B_y}^T \mathbf{B_y})\mathbf{m} \nonumber
+\end{align}\end{split}\]</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">BayGrav3D</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="gettingstarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="theory.html">Theoretical Background</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="grav_over_prism.html">1. Gravitational Anomaly over a 3D Prism</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">2. Linear Least Squares Inversion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-linear-least-squares-solution">2.1. The Linear Least Squares Solution</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bayes-theorem-and-incorporating-data-errors">2.2. Bayes Theorem and Incorporating Data Errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tikhonov-regularization">2.3. Tikhonov Regularization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#first-order-tikhonov-regularization-with-variable-grid-spacing">2.4. First Order Tikhonov Regularization with Variable Grid Spacing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#second-order-tikhonov-regularization-for-variable-grid-spacing">2.5. Second Order Tikhonov Regularization for Variable Grid Spacing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#boundary-conditions-and-variable-order-tikhonov-regularization">2.6. Boundary Conditions and Variable Order Tikhonov Regularization</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="priors.html">3. Priors</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">Code</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="theory.html">Theoretical Background</a><ul>
+      <li>Previous: <a href="grav_over_prism.html" title="previous chapter"><span class="section-number">1. </span>Gravitational Anomaly over a 3D Prism</a></li>
+      <li>Next: <a href="priors.html" title="next chapter"><span class="section-number">3. </span>Priors</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, Erin Hightower.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/files/lls_inversion.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
